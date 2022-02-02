@@ -28,6 +28,7 @@ class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
     public function process(ContainerBuilder $container)
     {
         $this->container = $container;
+        $this->cleanupDirectory();
         $services = array_keys($container->findTaggedServiceIds('rikudou.memoize.memoizable_service'));
 
         foreach ($services as $service) {
@@ -368,6 +369,17 @@ class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
 
     private function saveClass(string $classContent, string $className): string
     {
+        $targetDir = $this->getTargetDirectory();
+
+        if (!file_put_contents("{$targetDir}/{$className}.php", $classContent)) {
+            throw new RuntimeException(sprintf("Could not create memoized proxy at '%s/%s.php'", $targetDir, $className));
+        }
+
+        return "{$targetDir}/{$className}.php";
+    }
+
+    private function getTargetDirectory(): string
+    {
         $targetDir = $this->container->getParameter('rikudou.memoize.target_dir');
         if (!is_dir($targetDir)) {
             if (file_exists($targetDir)) {
@@ -379,10 +391,16 @@ class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
             }
         }
 
-        if (!file_put_contents("{$targetDir}/{$className}.php", $classContent)) {
-            throw new RuntimeException(sprintf("Could not create memoized proxy at '%s/%s.php'", $targetDir, $className));
-        }
+        return $targetDir;
+    }
 
-        return "{$targetDir}/{$className}.php";
+    private function cleanupDirectory(): void
+    {
+        $files = glob("{$this->getTargetDirectory()}/*.php");
+        foreach ($files as $file) {
+            if (!@unlink($file)) {
+                trigger_error("Failed to delete proxy class at {$file}", E_USER_NOTICE);
+            }
+        }
     }
 }
