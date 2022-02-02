@@ -109,10 +109,11 @@ class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
     {
         $originalClass = $serviceDefinition->getClass();
         $cacheService = $this->container->getParameter('rikudou.memoize.cache_service');
+        $cacheServiceDefinition = $this->container->getDefinition($cacheService);
 
         $constructor = "\tpublic function __construct(\n";
         $constructor .= "\t\tprivate readonly \\{$originalClass} \$original,\n";
-        $constructor .= "\t\tprivate readonly \\{$cacheService} \$cache,\n";
+        $constructor .= "\t\tprivate readonly \\{$cacheServiceDefinition->getClass()} \$cache,\n";
         $constructor .= "\t) {}";
 
         return $constructor;
