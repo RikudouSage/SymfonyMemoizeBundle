@@ -1,0 +1,3 @@
+services:
+  rikudou.memoize.internal_cache:
+    class: Rikudou\MemoizeBundle\Cache\InMemoryCachePool

@@ -1,0 +1,22 @@
+{
+    "name": "rikudou/memoize-bundle",
+    "description": "Memoize attribute for Symfony",
+    "type": "symfony-bundle",
+    "license": "MIT",
+    "autoload": {
+        "psr-4": {
+            "Rikudou\\MemoizeBundle\\": "src/"
+        }
+    },
+    "authors": [
+        {
+            "name": "Dominik Chrastecky",
+            "email": "dominik@chrastecky.cz"
+        }
+    ],
+    "minimum-stability": "stable",
+    "require": {
+        "php": "^8.1",
+        "symfony/framework-bundle": "^5.4|^6.0"
+    }
+}
