@@ -164,6 +164,9 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
         $methodContent = "\tpublic function {$method->getName()}({$parameters}){$returnTypeString} {\n";
         $methodContent .= "\t\t\$cacheKey = '';\n";
         foreach ($parametersCall as $parameter) {
+            if (str_starts_with($parameter, '...')) {
+                $parameter = substr($parameter, 3);
+            }
             $methodContent .= "\t\t\$cacheKey .= serialize({$parameter});\n";
         }
         $methodContent .= "\t\t\$cacheKey = hash('sha512', \$cacheKey);\n";
