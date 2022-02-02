@@ -4,6 +4,7 @@ namespace Rikudou\MemoizeBundle\DependencyInjection\Compiler;
 
 use JetBrains\PhpStorm\Pure;
 use LogicException;
+use Psr\Cache\CacheItemPoolInterface;
 use ReflectionClass;
 use ReflectionIntersectionType;
 use ReflectionMethod;
@@ -108,12 +109,11 @@ class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
     private function getConstructor(Definition $serviceDefinition): string
     {
         $originalClass = $serviceDefinition->getClass();
-        $cacheService = $this->container->getParameter('rikudou.memoize.cache_service');
-        $cacheServiceDefinition = $this->container->getDefinition($cacheService);
+        $cacheClass = CacheItemPoolInterface::class;
 
         $constructor = "\tpublic function __construct(\n";
         $constructor .= "\t\tprivate readonly \\{$originalClass} \$original,\n";
-        $constructor .= "\t\tprivate readonly \\{$cacheServiceDefinition->getClass()} \$cache,\n";
+        $constructor .= "\t\tprivate readonly \\{$cacheClass} \$cache,\n";
         $constructor .= "\t) {}";
 
         return $constructor;
@@ -156,14 +156,14 @@ class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
         $methodContent .= "\t\t\$cacheItem = \$this->cache->getItem(\$cacheKey);\n";
 
         $methodContent .= "\t\tif (\$cacheItem->isHit()) {\n";
-        if ($returnType !== 'void') {
+        if ($returnType === 'void') {
             $methodContent .= "\t\t\treturn;\n";
         } else {
             $methodContent .= "\t\t\treturn \$cacheItem->get();\n";
         }
         $methodContent .= "\t\t}\n";
 
-        $methodContent .= "\t\t\$cacheItem->set(\$this->original->{$method->getName()}({$parametersCallString});\n";
+        $methodContent .= "\t\t\$cacheItem->set(\$this->original->{$method->getName()}({$parametersCallString}));\n";
         $methodContent .= "\t\t\$cacheItem->expiresAfter({$expiresAfter});\n";
         $methodContent .= "\t\t\$this->cache->save(\$cacheItem);\n\n";
 
