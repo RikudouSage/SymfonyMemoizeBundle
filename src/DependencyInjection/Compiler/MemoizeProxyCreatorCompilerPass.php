@@ -410,7 +410,7 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
 
         if (!is_dir($targetDir)) {
             if (file_exists($targetDir)) {
-                throw new RuntimeException(sprintf("The target directory for memoization ('%s') exists but is not a file", $targetDir));
+                throw new RuntimeException(sprintf("The target directory for memoization ('%s') exists but is not a directory", $targetDir));
             }
 
             if (!mkdir($targetDir, 0744, true)) {
