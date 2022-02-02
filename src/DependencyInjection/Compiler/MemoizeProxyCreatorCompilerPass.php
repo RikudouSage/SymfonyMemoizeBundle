@@ -2,6 +2,7 @@
 
 namespace Rikudou\MemoizeBundle\DependencyInjection\Compiler;
 
+use Exception;
 use JetBrains\PhpStorm\Pure;
 use LogicException;
 use Psr\Cache\CacheItemPoolInterface;
@@ -15,20 +16,23 @@ use ReflectionUnionType;
 use Rikudou\MemoizeBundle\Attribute\Memoize;
 use Rikudou\MemoizeBundle\Attribute\NoMemoize;
 use RuntimeException;
-use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
+use Symfony\Component\DependencyInjection\ContainerBuilder;
 use Symfony\Component\DependencyInjection\Definition;
 use Symfony\Component\DependencyInjection\Reference;
 use UnitEnum;
 
-class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
+final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
 {
     private ContainerBuilder $container;
 
-    public function process(ContainerBuilder $container)
+    public function process(ContainerBuilder $container): void
     {
         $this->container = $container;
         $this->cleanupDirectory();
+
+        $cacheServiceName = $container->getParameter('rikudou.memoize.cache_service');
+        assert(is_string($cacheServiceName));
         $services = array_keys($container->findTaggedServiceIds('rikudou.memoize.memoizable_service'));
 
         foreach ($services as $service) {
@@ -46,7 +50,7 @@ class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
 
             $newDefinition = new Definition($proxyClass, [
                 new Reference('.inner'),
-                new Reference($container->getParameter('rikudou.memoize.cache_service')),
+                new Reference($cacheServiceName),
             ]);
             $newDefinition->setDecoratedService($service);
             $container->setDefinition($proxyClass, $newDefinition);
@@ -54,13 +58,16 @@ class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
     }
 
     /**
-     * @param array<ReflectionClass> $interfaces
+     * @param array<ReflectionClass<object>> $interfaces
+     * @param ReflectionClass<object>        $classReflection
+     *
+     * @throws Exception
      */
     private function createProxyClass(
-        Definition      $serviceDefinition,
-        string          $serviceId,
+        Definition $serviceDefinition,
+        string $serviceId,
         ReflectionClass $classReflection,
-        array           $interfaces
+        array $interfaces
     ): string {
         $suffix = null;
         if ($filename = $classReflection->getFileName()) {
@@ -70,7 +77,7 @@ class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
             $suffix = bin2hex(random_bytes(16));
         }
 
-        $namespace = "App\\Memoized";
+        $namespace = 'App\\Memoized';
         $className = "{$classReflection->getShortName()}_Proxy_{$suffix}";
 
         $classContent = "<?php\n\n";
@@ -99,10 +106,13 @@ class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
         return "{$namespace}\\{$className}";
     }
 
+    /**
+     * @param ReflectionClass<object> ...$interfaces
+     */
     private function getInterfacesString(ReflectionClass ...$interfaces): string
     {
         return implode(', ', array_map(
-            fn(ReflectionClass $interface) => "\\{$interface->getName()}",
+            fn (ReflectionClass $interface) => "\\{$interface->getName()}",
             $interfaces,
         ));
     }
@@ -137,9 +147,10 @@ class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
         $serviceName = preg_replace('@[^a-zA-Z0-9_.]@', '', $serviceId);
         $attribute = $this->getAttribute($method, Memoize::class)
             ?? $this->getAttribute($method->getDeclaringClass(), Memoize::class);
-        assert($attribute !== null);
+        assert($attribute instanceof Memoize);
         $expiresAfter = $attribute->seconds
             ?? $this->container->getParameter('rikudou.memoize.default_memoize_seconds');
+        assert(is_scalar($expiresAfter));
 
         $returnTypeString = '';
         if ($returnType = $method->getReturnType()) {
@@ -192,7 +203,7 @@ class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
 
         $methodContent .= "\t\t";
         if ($returnType !== 'void') {
-            $methodContent .= "return ";
+            $methodContent .= 'return ';
         }
         $methodContent .= "\$this->original->{$method->getName()}({$parametersCall});\n";
 
@@ -211,8 +222,11 @@ class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
     }
 
     /**
-     * @template T
-     * @param class-string<T> $attribute
+     * @template T of object
+     *
+     * @param ReflectionMethod|ReflectionClass<T> $target
+     * @param class-string<T>                     $attribute
+     *
      * @return T|null
      */
     private function getAttribute(ReflectionMethod|ReflectionClass $target, string $attribute): ?object
@@ -227,6 +241,7 @@ class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
 
     /**
      * @param array<ReflectionParameter> $parameters
+     *
      * @return array<string>
      */
     private function getParameterDefinitions(array $parameters): array
@@ -277,11 +292,11 @@ class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
         } elseif ($type instanceof ReflectionIntersectionType) {
             $separator = '&';
         } else {
-            throw new LogicException(sprintf("Unknown type of parameter: %s", get_class($type)));
+            throw new LogicException(sprintf('Unknown type of parameter: %s', get_class($type)));
         }
 
         $types = array_map(
-            fn(ReflectionNamedType $type) => $this->getType($type),
+            fn (ReflectionNamedType $type) => $this->getType($type),
             $type->getTypes(),
         );
 
@@ -318,16 +333,19 @@ class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
         }
 
         if ($value instanceof UnitEnum) {
-            return sprintf("\\%s::%s", get_class($value), $value->name);
+            return sprintf('\\%s::%s', get_class($value), $value->name);
         }
 
         if (is_array($value)) {
             return $this->stringifyArray($value);
         }
 
-        throw new LogicException(sprintf("Unsupported type for dumping given: %s", gettype($value)));
+        throw new LogicException(sprintf('Unsupported type for dumping given: %s', gettype($value)));
     }
 
+    /**
+     * @param array<mixed> $array
+     */
     private function stringifyArray(array $array): string
     {
         if (!count($array)) {
@@ -349,6 +367,7 @@ class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
 
     /**
      * @param array<ReflectionParameter> $parameters
+     *
      * @return array<string>
      */
     #[Pure]
@@ -381,6 +400,8 @@ class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
     private function getTargetDirectory(): string
     {
         $targetDir = $this->container->getParameter('rikudou.memoize.target_dir');
+        assert(is_string($targetDir));
+
         if (!is_dir($targetDir)) {
             if (file_exists($targetDir)) {
                 throw new RuntimeException(sprintf("The target directory for memoization ('%s') exists but is not a file", $targetDir));
@@ -397,6 +418,9 @@ class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
     private function cleanupDirectory(): void
     {
         $files = glob("{$this->getTargetDirectory()}/*.php");
+        if ($files === false) {
+            return;
+        }
         foreach ($files as $file) {
             if (!@unlink($file)) {
                 trigger_error("Failed to delete proxy class at {$file}", E_USER_NOTICE);

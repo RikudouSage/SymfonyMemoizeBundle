@@ -18,5 +18,14 @@
     "require": {
         "php": "^8.1",
         "symfony/framework-bundle": "^5.4|^6.0"
+    },
+    "require-dev": {
+        "friendsofphp/php-cs-fixer": "^3.5",
+        "jetbrains/phpstorm-attributes": "^1.0",
+        "phpstan/phpstan": "^1.4"
+    },
+    "scripts": {
+        "fixer": "php-cs-fixer fix --verbose --allow-risky=yes",
+        "phpstan": "phpstan analyse --level=max src"
     }
 }

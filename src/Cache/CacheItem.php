@@ -7,7 +7,7 @@ use DateTimeInterface;
 use LogicException;
 use Psr\Cache\CacheItemInterface;
 
-class CacheItem implements CacheItemInterface
+final class CacheItem implements CacheItemInterface
 {
     private ?bool $isHit = null;
 

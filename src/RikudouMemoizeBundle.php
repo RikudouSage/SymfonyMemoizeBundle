@@ -8,20 +8,25 @@ use Symfony\Component\HttpKernel\Bundle\Bundle;
 
 final class RikudouMemoizeBundle extends Bundle
 {
-    public function build(ContainerBuilder $container)
+    public function build(ContainerBuilder $container): void
     {
+        $projectDir = $container->getParameter('kernel.project_dir');
+        $targetDir = $container->getParameter('rikudou.memoize.target_dir');
+        assert(is_string($projectDir));
+        assert(is_string($targetDir));
+
         $container->setParameter(
             'rikudou.memoize.target_dir',
-            $container->getParameter('kernel.project_dir') . '/memoized',
+            "{$projectDir}/memoized",
         );
 
-        spl_autoload_register(function (string $className) use ($container) {
+        spl_autoload_register(function (string $className) use ($targetDir) {
             if (!str_starts_with($className, 'App\\Memoized')) {
                 return;
             }
 
             $path = substr($className, strlen('App\\Memoized\\'));
-            $path = $container->getParameter('rikudou.memoize.target_dir') . '/' . $path . '.php';
+            $path = "{$targetDir}/{$path}.php";
             if (file_exists($path)) {
                 require $path;
             }

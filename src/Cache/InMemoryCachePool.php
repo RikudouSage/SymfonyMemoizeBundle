@@ -8,7 +8,7 @@ use Psr\Cache\CacheItemInterface;
 use Psr\Cache\CacheItemPoolInterface;
 use Psr\Cache\InvalidArgumentException;
 
-class InMemoryCachePool implements CacheItemPoolInterface
+final class InMemoryCachePool implements CacheItemPoolInterface
 {
     /**
      * @var array<CacheItem>
@@ -21,6 +21,13 @@ class InMemoryCachePool implements CacheItemPoolInterface
         return $this->items[$key] ?? new CacheItem($key);
     }
 
+    /**
+     * @param array<string> $keys
+     *
+     * @throws InvalidArgumentException
+     *
+     * @return iterable<CacheItemInterface>
+     */
     public function getItems(array $keys = []): iterable
     {
         foreach ($keys as $key) {
