@@ -164,7 +164,7 @@ class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
         $methodContent .= "\t\t}\n";
 
         $methodContent .= "\t\t\$cacheItem->set(\$this->original->{$method->getName()}({$parametersCallString});\n";
-        $methodContent .= "\t\t\$cacheItem->expiresAfter({}$expiresAfter);\n";
+        $methodContent .= "\t\t\$cacheItem->expiresAfter({$expiresAfter});\n";
         $methodContent .= "\t\t\$this->cache->save(\$cacheItem);\n\n";
 
         if ($returnType !== 'void') {
