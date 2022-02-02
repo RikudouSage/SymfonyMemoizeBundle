@@ -11,14 +11,15 @@ final class RikudouMemoizeBundle extends Bundle
     public function build(ContainerBuilder $container): void
     {
         $projectDir = $container->getParameter('kernel.project_dir');
-        $targetDir = $container->getParameter('rikudou.memoize.target_dir');
         assert(is_string($projectDir));
-        assert(is_string($targetDir));
 
         $container->setParameter(
             'rikudou.memoize.target_dir',
             "{$projectDir}/memoized",
         );
+
+        $targetDir = $container->getParameter('rikudou.memoize.target_dir');
+        assert(is_string($targetDir));
 
         spl_autoload_register(function (string $className) use ($targetDir) {
             if (!str_starts_with($className, 'App\\Memoized')) {
