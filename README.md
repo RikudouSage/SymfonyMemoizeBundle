@@ -27,7 +27,7 @@ so that every time you ask for your service the proxy gets injected instead.
 For non-memoized methods the proxy class simply passes the arguments through to your service while for memoized
 methods it also creates a cache key based on the parameters and looks for the result into the cache.
 
-###Examples:
+### Examples:
 
 **Class with one memoized method**
 
