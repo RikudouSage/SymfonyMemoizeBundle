@@ -15,6 +15,10 @@ final class Configuration implements ConfigurationInterface
         $rootNode
             ->addDefaultsIfNotSet()
             ->children()
+                ->scalarNode('enabled')
+                    ->info('Whether memoization is enabled or not.')
+                    ->defaultValue(true)
+                ->end()
                 ->integerNode('default_memoize_seconds')
                     ->info('The default memoization period if none is specified in attribute. -1 means until end of request.')
                     ->defaultValue(-1)

@@ -28,6 +28,9 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
 
     public function process(ContainerBuilder $container): void
     {
+        if (!$container->getParameter('rikudou.memoize.enabled')) {
+            return;
+        }
         $this->container = $container;
         $this->cleanupDirectory();
 
