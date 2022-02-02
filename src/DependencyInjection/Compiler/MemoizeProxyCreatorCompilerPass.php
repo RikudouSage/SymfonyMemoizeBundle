@@ -71,7 +71,7 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
     ): string {
         $suffix = null;
         if ($filename = $classReflection->getFileName()) {
-            $suffix = md5_file($filename);
+            $suffix = md5(md5_file($filename) . $serviceId);
         }
         if (!is_string($suffix)) {
             $suffix = bin2hex(random_bytes(16));
