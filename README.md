@@ -9,6 +9,21 @@ Requires php 8.1+.
 
 `composer require rikudou/memoize-bundle`
 
+Afterwards add this to your `composer.json` autoload PSR-4 section: `"App\\Memoized\\": "memoized/"`
+
+Example on fresh Symfony project:
+
+```json5
+{
+  "autoload": {
+    "psr-4": {
+      "App\\": "src/",
+      "App\\Memoized\\": "memoized/" // add this line
+    }
+  }
+}
+```
+
 ## Usage
 
 You can simply use the provided attributes.
