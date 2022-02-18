@@ -15,6 +15,7 @@ use ReflectionType;
 use ReflectionUnionType;
 use Rikudou\MemoizeBundle\Attribute\Memoize;
 use Rikudou\MemoizeBundle\Attribute\NoMemoize;
+use Rikudou\MemoizeBundle\Cache\InMemoryCachePool;
 use RuntimeException;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -54,6 +55,7 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
             $newDefinition = new Definition($proxyClass, [
                 new Reference('.inner'),
                 new Reference($cacheServiceName),
+                new Reference('rikudou.memoize.internal_cache'),
             ]);
             $newDefinition->setDecoratedService($service);
             $container->setDefinition($proxyClass, $newDefinition);
@@ -124,10 +126,12 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
     {
         $originalClass = $serviceDefinition->getClass();
         $cacheClass = CacheItemPoolInterface::class;
+        $internalCacheClass = InMemoryCachePool::class;
 
         $constructor = "\tpublic function __construct(\n";
         $constructor .= "\t\tprivate readonly \\{$originalClass} \$original,\n";
         $constructor .= "\t\tprivate readonly \\{$cacheClass} \$cache,\n";
+        $constructor .= "\t\tprivate readonly \\{$internalCacheClass} \$internalCache,\n";
         $constructor .= "\t) {}";
 
         return $constructor;
@@ -171,7 +175,11 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
         }
         $methodContent .= "\t\t\$cacheKey = hash('sha512', \$cacheKey);\n";
         $methodContent .= "\t\t\$cacheKey = \"rikudou_memoize_{$serviceName}_{$method->getName()}_{\$cacheKey}\";\n\n";
-        $methodContent .= "\t\t\$cacheItem = \$this->cache->getItem(\$cacheKey);\n";
+        if ($expiresAfter < 0) {
+            $methodContent .= "\t\t\$cacheItem = \$this->internalCache->getItem(\$cacheKey);\n";
+        } else {
+            $methodContent .= "\t\t\$cacheItem = \$this->cache->getItem(\$cacheKey);\n";
+        }
 
         $methodContent .= "\t\tif (\$cacheItem->isHit()) {\n";
         if ($returnType === 'void') {
@@ -183,7 +191,11 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
 
         $methodContent .= "\t\t\$cacheItem->set(\$this->original->{$method->getName()}({$parametersCallString}));\n";
         $methodContent .= "\t\t\$cacheItem->expiresAfter({$expiresAfter});\n";
-        $methodContent .= "\t\t\$this->cache->save(\$cacheItem);\n\n";
+        if ($expiresAfter < 0) {
+            $methodContent .= "\t\t\$this->internalCache->save(\$cacheItem);\n\n";
+        } else {
+            $methodContent .= "\t\t\$this->cache->save(\$cacheItem);\n\n";
+        }
 
         if ($returnType !== 'void') {
             $methodContent .= "\t\treturn \$cacheItem->get();\n";

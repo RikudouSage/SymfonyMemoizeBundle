@@ -33,14 +33,8 @@ final class RikudouMemoizeExtension extends Extension
         assert($configuration !== null);
         $configs = $this->processConfiguration($configuration, $configs);
 
-        $cacheService = $configs['cache_service'];
-        $defaultMemoizeSeconds = $configs['default_memoize_seconds'];
-        if ($defaultMemoizeSeconds < 0) {
-            $cacheService = 'rikudou.memoize.internal_cache';
-        }
-
-        $container->setParameter('rikudou.memoize.cache_service', $cacheService);
-        $container->setParameter('rikudou.memoize.default_memoize_seconds', $defaultMemoizeSeconds);
+        $container->setParameter('rikudou.memoize.cache_service', $configs['cache_service']);
+        $container->setParameter('rikudou.memoize.default_memoize_seconds', $configs['default_memoize_seconds']);
         $container->setParameter('rikudou.memoize.enabled', $configs['enabled']);
     }
 }
