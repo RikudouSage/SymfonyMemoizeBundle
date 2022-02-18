@@ -42,7 +42,7 @@ final class Configuration implements ConfigurationInterface
                                 ->info('List of methods to memoize. Leave empty to memoize all of them.')
                                 ->arrayPrototype()
                                     ->children()
-                                        ->scalarNode('method_name')
+                                        ->scalarNode('name')
                                             ->info('The method name.')
                                         ->end()
                                         ->scalarNode('memoize_seconds')

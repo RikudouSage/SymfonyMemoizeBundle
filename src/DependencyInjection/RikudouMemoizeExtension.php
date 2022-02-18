@@ -43,9 +43,9 @@ final class RikudouMemoizeExtension extends Extension
     }
 
     /**
-     * @param array<int, array{service_id: string|null, memoize_seconds: int|null, methods: array<array{method_name: string|null, memoize_seconds: int|null}>}> $services
+     * @param array<int, array{service_id: string|null, memoize_seconds: int|null, methods: array<array{name: string|null, memoize_seconds: int|null}>}> $services
      *
-     * @return array<int, array{service_id: string, memoize_seconds: int, methods: array<array{method_name: string, memoize_seconds: int}>}>
+     * @return array<int, array{service_id: string, memoize_seconds: int, methods: array<array{name: string, memoize_seconds: int}>}>
      */
     private function filterAdditionalServices(array $services, int $defaultMemoizeSeconds): array
     {
