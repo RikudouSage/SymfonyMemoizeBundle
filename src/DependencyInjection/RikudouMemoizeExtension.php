@@ -36,5 +36,19 @@ final class RikudouMemoizeExtension extends Extension
         $container->setParameter('rikudou.memoize.cache_service', $configs['cache_service']);
         $container->setParameter('rikudou.memoize.default_memoize_seconds', $configs['default_memoize_seconds']);
         $container->setParameter('rikudou.memoize.enabled', $configs['enabled']);
+        $container->setParameter(
+            'rikudou.internal.memoize.additional_services',
+            $this->filterAdditionalServices($configs['memoize_services'])
+        );
+    }
+
+    /**
+     * @param array<int, array{service_id: string|null, memoize_seconds: int|null, methods: array<array{name: string|null, memoize_seconds: int|null}>}> $services
+     *
+     * @return array<int, array{service_id: string|null, memoize_seconds: int|null, methods: array<array{name: string|null, memoize_seconds: int|null}>}>
+     */
+    private function filterAdditionalServices(array $services): array
+    {
+        return array_filter($services, fn (array $service) => $service['service_id'] !== null);
     }
 }

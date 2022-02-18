@@ -239,6 +239,7 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
         if ($method->getReturnType() !== null && $this->getType($method->getReturnType()) === 'never') {
             return false;
         }
+
         return (
                 $this->getAttribute($method, Memoize::class) !== null
                 || $this->getAttribute($method->getDeclaringClass(), Memoize::class) !== null
