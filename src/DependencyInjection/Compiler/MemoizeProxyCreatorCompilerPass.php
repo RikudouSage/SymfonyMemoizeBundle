@@ -13,6 +13,7 @@ use ReflectionNamedType;
 use ReflectionParameter;
 use ReflectionType;
 use ReflectionUnionType;
+use Rikudou\MemoizeBundle\Attribute\Memoizable;
 use Rikudou\MemoizeBundle\Attribute\Memoize;
 use Rikudou\MemoizeBundle\Attribute\NoMemoize;
 use Rikudou\MemoizeBundle\Cache\InMemoryCachePool;
@@ -304,6 +305,11 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
                 : $config['memoize_seconds'];
 
             return new Memoize($seconds);
+        } elseif ($attribute === Memoizable::class) {
+            assert($target instanceof ReflectionClass);
+            return isset($this->additionalServicesConfig[$target->getName()])
+                ? new Memoizable()
+                : null;
         }
 
         return null;
