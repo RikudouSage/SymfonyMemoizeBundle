@@ -53,7 +53,13 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
         }, $container->getParameter('rikudou.internal.memoize.additional_services'));
 
         foreach ($additionalServices as $additionalService) {
+            foreach ($additionalService['methods'] as $key => $method) {
+                $additionalService['methods'][$method['name']] = $method;
+                unset($additionalService['methods'][$key]);
+            }
             $this->additionalServicesConfig[$additionalService['class_name']] = $additionalService;
+            $definition = $container->getDefinition($additionalService['service_id']);
+            $definition->addTag('rikudou.memoize.cache_service');
         }
 
         $this->cleanupDirectory();
@@ -281,11 +287,26 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
     private function getAttribute(ReflectionMethod|ReflectionClass $target, string $attribute): ?object
     {
         $attributes = $target->getAttributes($attribute);
-        if (!count($attributes)) {
-            return null;
+        if (count($attributes)) {
+            return $attributes[array_key_first($attributes)]->newInstance();
         }
 
-        return $attributes[array_key_first($attributes)]->newInstance();
+        // todo make this better
+        if ($attribute === Memoize::class) {
+            $class = $target instanceof ReflectionClass ? $target->getName() : $target->getDeclaringClass()->getName();
+            if (!isset($this->additionalServicesConfig[$class])) {
+                return null;
+            }
+
+            $config = $this->additionalServicesConfig[$class];
+            $seconds = $target instanceof ReflectionMethod
+                ? $config['methods'][$target->getName()]['memoize_seconds'] ?? $config['memoize_seconds']
+                : $config['memoize_seconds'];
+
+            return new Memoize($seconds);
+        }
+
+        return null;
     }
 
     /**
