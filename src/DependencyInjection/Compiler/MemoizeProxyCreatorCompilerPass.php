@@ -184,7 +184,7 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
         $methodContent .= "\t\tif (\$cacheItem->isHit()) {\n";
         if ($returnType === 'void') {
             $methodContent .= "\t\t\treturn;\n";
-        } else {
+        } elseif ($returnType !== 'never') {
             $methodContent .= "\t\t\treturn \$cacheItem->get();\n";
         }
         $methodContent .= "\t\t}\n";
@@ -201,7 +201,7 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
             $methodContent .= "\t\t\$this->cache->save(\$cacheItem);\n\n";
         }
 
-        if ($returnType !== 'void') {
+        if ($returnType !== 'void' && $returnType !== 'never') {
             $methodContent .= "\t\treturn \$cacheItem->get();\n";
         }
 
@@ -236,6 +236,9 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
 
     private function shouldMemoize(ReflectionMethod $method): bool
     {
+        if ($method->getReturnType() !== null && $this->getType($method->getReturnType()) === 'never') {
+            return false;
+        }
         return (
                 $this->getAttribute($method, Memoize::class) !== null
                 || $this->getAttribute($method->getDeclaringClass(), Memoize::class) !== null
