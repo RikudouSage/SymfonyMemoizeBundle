@@ -206,3 +206,95 @@ rikudou_memoize:
   # The default cache service to use. If default_memoize_seconds is set to -1 this setting is ignored and internal service is used.
   cache_service:        cache.app
 ```
+
+## Example proxy class
+
+The first code block is the original class, the second code block is the proxy.
+
+```php
+<?php
+
+namespace App\Service;
+
+use Rikudou\MemoizeBundle\Attribute\Memoizable;
+use Rikudou\MemoizeBundle\Attribute\Memoize;
+use Rikudou\MemoizeBundle\Attribute\NoMemoize;
+
+#[Memoizable]
+#[Memoize(seconds: 10)]
+class Calculator implements CalculatorInterface
+{
+    public function add(int $a, int $b): int
+    {
+        return $a + $b;
+    }
+
+    #[Memoize(seconds: -1)]
+    public function sub(int $a, int $b): int
+    {
+        return $a - $b;
+    }
+
+    #[NoMemoize]
+    public function mul(int $a, int $b): int
+    {
+        return $a * $b;
+    }
+}
+```
+
+```php
+<?php
+
+namespace App\Memoized;
+
+final class Calculator_Proxy_5bb944015382feea3ea46e3856853bd6 implements \App\Service\CalculatorInterface
+{
+	public function __construct(
+		private readonly \App\Service\Calculator $original,
+		private readonly \Psr\Cache\CacheItemPoolInterface $cache,
+		private readonly \Rikudou\MemoizeBundle\Cache\InMemoryCachePool $internalCache,
+	) {}
+
+	public function add(int $a, int $b): int {
+		$cacheKey = '';
+		$cacheKey .= serialize($a);
+		$cacheKey .= serialize($b);
+		$cacheKey = hash('sha512', $cacheKey);
+		$cacheKey = "rikudou_memoize_AppServiceCalculator_add_{$cacheKey}";
+
+		$cacheItem = $this->cache->getItem($cacheKey);
+		if ($cacheItem->isHit()) {
+			return $cacheItem->get();
+		}
+		$cacheItem->set($this->original->add($a, $b));
+		$cacheItem->expiresAfter(10);
+		$this->cache->save($cacheItem);
+
+		return $cacheItem->get();
+	}
+
+	public function sub(int $a, int $b): int {
+		$cacheKey = '';
+		$cacheKey .= serialize($a);
+		$cacheKey .= serialize($b);
+		$cacheKey = hash('sha512', $cacheKey);
+		$cacheKey = "rikudou_memoize_AppServiceCalculator_sub_{$cacheKey}";
+
+		$cacheItem = $this->internalCache->getItem($cacheKey);
+		if ($cacheItem->isHit()) {
+			return $cacheItem->get();
+		}
+		$cacheItem->set($this->original->sub($a, $b));
+		$cacheItem->expiresAfter(0);
+		$this->internalCache->save($cacheItem);
+
+		return $cacheItem->get();
+	}
+
+	public function mul(int $a, int $b): int {
+		return $this->original->mul($a, $b);
+	}
+
+}
+```
