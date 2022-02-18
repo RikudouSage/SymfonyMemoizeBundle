@@ -53,21 +53,21 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
             return $service;
         }, $container->getParameter('rikudou.internal.memoize.additional_services'));
 
+        $services = [];
         foreach ($additionalServices as $additionalService) {
             foreach ($additionalService['methods'] as $key => $method) {
                 $additionalService['methods'][$method['name']] = $method;
                 unset($additionalService['methods'][$key]);
             }
             $this->additionalServicesConfig[$additionalService['class_name']] = $additionalService;
-            $definition = $container->getDefinition($additionalService['service_id']);
-            $definition->addTag('rikudou.memoize.cache_service');
+            $services[] = $additionalService['service_id'];
         }
 
         $this->cleanupDirectory();
 
         $cacheServiceName = $container->getParameter('rikudou.memoize.cache_service');
         assert(is_string($cacheServiceName));
-        $services = array_keys($container->findTaggedServiceIds('rikudou.memoize.memoizable_service'));
+        $services = [...$services, ...array_keys($container->findTaggedServiceIds('rikudou.memoize.memoizable_service'))];
 
         foreach ($services as $service) {
             $definition = $container->getDefinition($service);
