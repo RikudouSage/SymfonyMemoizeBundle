@@ -298,11 +298,21 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
             if (!isset($this->additionalServicesConfig[$class])) {
                 return null;
             }
-
             $config = $this->additionalServicesConfig[$class];
-            $seconds = $target instanceof ReflectionMethod
-                ? $config['methods'][$target->getName()]['memoize_seconds'] ?? $config['memoize_seconds']
-                : $config['memoize_seconds'];
+
+            if ($target instanceof ReflectionClass) {
+                if (count($config['methods'])) {
+                    return null;
+                }
+
+                $seconds = $config['memoize_seconds'];
+            } else {
+                if (!isset($config['methods'][$target->getName()])) {
+                    return null;
+                }
+
+                $seconds = $config['methods'][$target->getName()]['memoize_seconds'] ?? $config['memoize_seconds'];
+            }
 
             return new Memoize($seconds);
         } elseif ($attribute === Memoizable::class) {
