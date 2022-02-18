@@ -314,9 +314,12 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
                 $seconds = $config['methods'][$target->getName()]['memoize_seconds'] ?? $config['memoize_seconds'];
             }
 
+            // @phpstan-ignore-next-line
             return new Memoize($seconds);
         } elseif ($attribute === Memoizable::class) {
             assert($target instanceof ReflectionClass);
+
+            // @phpstan-ignore-next-line
             return isset($this->additionalServicesConfig[$target->getName()])
                 ? new Memoizable()
                 : null;
