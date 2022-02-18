@@ -224,7 +224,7 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
         $methodContent = "\tpublic function {$method->getName()}({$parameters}){$returnTypeString} {\n";
 
         $methodContent .= "\t\t";
-        if ($returnType !== 'void') {
+        if ($returnType !== 'void' && $returnType !== 'never') {
             $methodContent .= 'return ';
         }
         $methodContent .= "\$this->original->{$method->getName()}({$parametersCall});\n";
