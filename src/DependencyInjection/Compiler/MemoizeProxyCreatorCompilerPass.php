@@ -27,12 +27,35 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
 {
     private ContainerBuilder $container;
 
+    /**
+     * @var array<string, array{service_id: string, class_name: class-string, memoize_seconds: int, methods: array<array{name: string, memoize_seconds: int}>}>
+     */
+    private array $additionalServicesConfig = [];
+
     public function process(ContainerBuilder $container): void
     {
         if (!$container->getParameter('rikudou.memoize.enabled')) {
             return;
         }
         $this->container = $container;
+
+        assert(is_array($container->getParameter('rikudou.internal.memoize.additional_services')));
+
+        /** @var array<int, array{service_id: string, class_name: class-string, memoize_seconds: int, methods: array<array{name: string, memoize_seconds: int}>}> $additionalServices */
+        $additionalServices = array_map(function (array $service) use ($container): array {
+            $definition = $container->getDefinition($service['service_id']);
+            if (!$class = $definition->getClass()) {
+                throw new RuntimeException("There is no class for service '{$service['service_id']}'");
+            }
+            $service['class_name'] = $class;
+
+            return $service;
+        }, $container->getParameter('rikudou.internal.memoize.additional_services'));
+
+        foreach ($additionalServices as $additionalService) {
+            $this->additionalServicesConfig[$additionalService['class_name']] = $additionalService;
+        }
+
         $this->cleanupDirectory();
 
         $cacheServiceName = $container->getParameter('rikudou.memoize.cache_service');
