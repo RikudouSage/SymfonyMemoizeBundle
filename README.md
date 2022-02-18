@@ -219,6 +219,7 @@ namespace App\Service;
 use Rikudou\MemoizeBundle\Attribute\Memoizable;
 use Rikudou\MemoizeBundle\Attribute\Memoize;
 use Rikudou\MemoizeBundle\Attribute\NoMemoize;
+use RuntimeException;
 
 #[Memoizable]
 #[Memoize(seconds: 10)]
@@ -240,6 +241,15 @@ class Calculator implements CalculatorInterface
     {
         return $a * $b;
     }
+
+    public function someVoidMethod(): void
+    {
+    }
+
+    public function throwException(): never
+    {
+        throw new RuntimeException();
+    }
 }
 ```
 
@@ -248,7 +258,7 @@ class Calculator implements CalculatorInterface
 
 namespace App\Memoized;
 
-final class Calculator_Proxy_5bb944015382feea3ea46e3856853bd6 implements \App\Service\CalculatorInterface
+final class Calculator_Proxy_97bcf9ddeba8fffab6ecd550cf2ea6d6 implements \App\Service\CalculatorInterface
 {
 	public function __construct(
 		private readonly \App\Service\Calculator $original,
@@ -294,6 +304,25 @@ final class Calculator_Proxy_5bb944015382feea3ea46e3856853bd6 implements \App\Se
 
 	public function mul(int $a, int $b): int {
 		return $this->original->mul($a, $b);
+	}
+
+	public function someVoidMethod(): void {
+		$cacheKey = '';
+		$cacheKey = hash('sha512', $cacheKey);
+		$cacheKey = "rikudou_memoize_AppServiceCalculator_someVoidMethod_{$cacheKey}";
+
+		$cacheItem = $this->cache->getItem($cacheKey);
+		if ($cacheItem->isHit()) {
+			return;
+		}
+		$cacheItem->set($this->original->someVoidMethod());
+		$cacheItem->expiresAfter(10);
+		$this->cache->save($cacheItem);
+
+	}
+
+	public function throwException(): never {
+		$this->original->throwException();
 	}
 
 }
