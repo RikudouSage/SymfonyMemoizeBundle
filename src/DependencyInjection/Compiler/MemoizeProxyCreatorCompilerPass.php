@@ -13,6 +13,7 @@ use ReflectionNamedType;
 use ReflectionParameter;
 use ReflectionType;
 use ReflectionUnionType;
+use Rikudou\MemoizeBundle\Attribute\Memoizable;
 use Rikudou\MemoizeBundle\Attribute\Memoize;
 use Rikudou\MemoizeBundle\Attribute\NoMemoize;
 use Rikudou\MemoizeBundle\Cache\InMemoryCachePool;
@@ -27,17 +28,46 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
 {
     private ContainerBuilder $container;
 
+    /**
+     * @var array<string, array{service_id: string, class_name: class-string, memoize_seconds: int, methods: array<array{name: string, memoize_seconds: int}>}>
+     */
+    private array $additionalServicesConfig = [];
+
     public function process(ContainerBuilder $container): void
     {
         if (!$container->getParameter('rikudou.memoize.enabled')) {
             return;
         }
         $this->container = $container;
+
+        assert(is_array($container->getParameter('rikudou.internal.memoize.additional_services')));
+
+        /** @var array<int, array{service_id: string, class_name: class-string, memoize_seconds: int, methods: array<array{name: string, memoize_seconds: int}>}> $additionalServices */
+        $additionalServices = array_map(function (array $service) use ($container): array {
+            $definition = $container->getDefinition($service['service_id']);
+            if (!$class = $definition->getClass()) {
+                throw new RuntimeException("There is no class for service '{$service['service_id']}'");
+            }
+            $service['class_name'] = $class;
+
+            return $service;
+        }, $container->getParameter('rikudou.internal.memoize.additional_services'));
+
+        $services = [];
+        foreach ($additionalServices as $additionalService) {
+            foreach ($additionalService['methods'] as $key => $method) {
+                $additionalService['methods'][$method['name']] = $method;
+                unset($additionalService['methods'][$key]);
+            }
+            $this->additionalServicesConfig[$additionalService['class_name']] = $additionalService;
+            $services[] = $additionalService['service_id'];
+        }
+
         $this->cleanupDirectory();
 
         $cacheServiceName = $container->getParameter('rikudou.memoize.cache_service');
         assert(is_string($cacheServiceName));
-        $services = array_keys($container->findTaggedServiceIds('rikudou.memoize.memoizable_service'));
+        $services = [...$services, ...array_keys($container->findTaggedServiceIds('rikudou.memoize.memoizable_service'))];
 
         foreach ($services as $service) {
             $definition = $container->getDefinition($service);
@@ -239,6 +269,7 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
         if ($method->getReturnType() !== null && $this->getType($method->getReturnType()) === 'never') {
             return false;
         }
+
         return (
                 $this->getAttribute($method, Memoize::class) !== null
                 || $this->getAttribute($method->getDeclaringClass(), Memoize::class) !== null
@@ -257,11 +288,44 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
     private function getAttribute(ReflectionMethod|ReflectionClass $target, string $attribute): ?object
     {
         $attributes = $target->getAttributes($attribute);
-        if (!count($attributes)) {
-            return null;
+        if (count($attributes)) {
+            return $attributes[array_key_first($attributes)]->newInstance();
         }
 
-        return $attributes[array_key_first($attributes)]->newInstance();
+        // todo make this better
+        if ($attribute === Memoize::class) {
+            $class = $target instanceof ReflectionClass ? $target->getName() : $target->getDeclaringClass()->getName();
+            if (!isset($this->additionalServicesConfig[$class])) {
+                return null;
+            }
+            $config = $this->additionalServicesConfig[$class];
+
+            if ($target instanceof ReflectionClass) {
+                if (count($config['methods'])) {
+                    return null;
+                }
+
+                $seconds = $config['memoize_seconds'];
+            } else {
+                if (!isset($config['methods'][$target->getName()])) {
+                    return null;
+                }
+
+                $seconds = $config['methods'][$target->getName()]['memoize_seconds'] ?? $config['memoize_seconds'];
+            }
+
+            // @phpstan-ignore-next-line
+            return new Memoize($seconds);
+        } elseif ($attribute === Memoizable::class) {
+            assert($target instanceof ReflectionClass);
+
+            // @phpstan-ignore-next-line
+            return isset($this->additionalServicesConfig[$target->getName()])
+                ? new Memoizable()
+                : null;
+        }
+
+        return null;
     }
 
     /**
