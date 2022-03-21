@@ -365,6 +365,10 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
             return $this->stringifyArray($value);
         }
 
+        if ($value === null) {
+            return 'null';
+        }
+
         throw new LogicException(sprintf('Unsupported type for dumping given: %s', gettype($value)));
     }
 
