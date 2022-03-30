@@ -1,6 +1,6 @@
 {
     "name": "rikudou/memoize-bundle",
-    "description": "Memoize attribute for Symfony",
+    "description": "Automatic memoization for your Symfony services",
     "type": "symfony-bundle",
     "license": "MIT",
     "autoload": {
