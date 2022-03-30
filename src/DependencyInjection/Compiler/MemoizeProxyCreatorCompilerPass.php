@@ -13,6 +13,7 @@ use ReflectionNamedType;
 use ReflectionParameter;
 use ReflectionType;
 use ReflectionUnionType;
+use Rikudou\MemoizeBundle\Attribute\Memoizable;
 use Rikudou\MemoizeBundle\Attribute\Memoize;
 use Rikudou\MemoizeBundle\Attribute\NoMemoize;
 use Rikudou\MemoizeBundle\Cache\InMemoryCachePool;
@@ -27,12 +28,17 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
 {
     private ContainerBuilder $container;
 
+    private string $environment;
+
     public function process(ContainerBuilder $container): void
     {
         if (!$container->getParameter('rikudou.memoize.enabled')) {
             return;
         }
         $this->container = $container;
+        $environment = $container->getParameter('kernel.environment');
+        assert(is_string($environment));
+        $this->environment = $environment;
         $this->cleanupDirectory();
 
         $cacheServiceName = $container->getParameter('rikudou.memoize.cache_service');
@@ -50,6 +56,16 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
             if (!count($interfaces)) {
                 throw new LogicException("Cannot memoize class '{$definition->getClass()}' without interfaces");
             }
+            // since the service got passed here by container it must have the attribute
+            $memoizableAttribute = $this->getAttribute($reflection, Memoizable::class);
+            assert($memoizableAttribute !== null);
+            if (
+                !in_array($this->environment, $memoizableAttribute->environments, true)
+                && !in_array(Memoizable::ALL_ENVIRONMENTS, $memoizableAttribute->environments, true)
+            ) {
+                continue;
+            }
+
             $proxyClass = $this->createProxyClass($definition, $service, $reflection, $interfaces);
 
             $newDefinition = new Definition($proxyClass, [
@@ -240,11 +256,33 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
             return false;
         }
 
-        return (
-                $this->getAttribute($method, Memoize::class) !== null
-                || $this->getAttribute($method->getDeclaringClass(), Memoize::class) !== null
-            )
-            && $this->getAttribute($method, NoMemoize::class) === null;
+        $memoizeAttribute = $this->getAttribute($method, Memoize::class)
+            ?? $this->getAttribute($method->getDeclaringClass(), Memoize::class);
+        $noMemoizeAttribute = $this->getAttribute($method, NoMemoize::class);
+
+        if ($memoizeAttribute === null) {
+            return false;
+        }
+        $environments = $memoizeAttribute->environments;
+        if (
+            !in_array($this->environment, $environments, true)
+            && !in_array(Memoizable::ALL_ENVIRONMENTS, $environments, true)
+        ) {
+            return false;
+        }
+
+        if ($noMemoizeAttribute === null) {
+            return true;
+        }
+        $environments = $noMemoizeAttribute->environments;
+        if (
+            in_array($this->environment, $environments, true)
+            || in_array(Memoizable::ALL_ENVIRONMENTS, $environments, true)
+        ) {
+            return false;
+        }
+
+        return true;
     }
 
     /**
