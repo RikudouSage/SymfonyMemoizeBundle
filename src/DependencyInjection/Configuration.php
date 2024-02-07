@@ -27,6 +27,10 @@ final class Configuration implements ConfigurationInterface
                     ->info('The default cache service to use. If default_memoize_seconds is set to -1 this setting is ignored and internal service is used.')
                     ->defaultValue('cache.app')
                 ->end()
+                ->scalarNode('key_specifier_service')
+                    ->info('The service to use to alter the cache key. Useful if you need to alter the cache key based on some global state.')
+                    ->defaultValue('rikudou.memoize.key_specifier.null')
+                ->end()
             ->end();
 
         return $treeBuilder;

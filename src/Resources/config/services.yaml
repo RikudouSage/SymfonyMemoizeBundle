@@ -1,3 +1,5 @@
 services:
   rikudou.memoize.internal_cache:
     class: Rikudou\MemoizeBundle\Cache\InMemoryCachePool
+  rikudou.memoize.key_specifier.null:
+    class: Rikudou\MemoizeBundle\Cache\KeySpecifier\NullCacheKeySpecifier

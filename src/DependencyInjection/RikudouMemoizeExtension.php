@@ -36,5 +36,6 @@ final class RikudouMemoizeExtension extends Extension
         $container->setParameter('rikudou.memoize.cache_service', $configs['cache_service']);
         $container->setParameter('rikudou.memoize.default_memoize_seconds', $configs['default_memoize_seconds']);
         $container->setParameter('rikudou.memoize.enabled', $configs['enabled']);
+        $container->setParameter('rikudou.memoize.key_specifier_service', $configs['key_specifier_service']);
     }
 }
