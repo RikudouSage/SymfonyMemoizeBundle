@@ -17,6 +17,7 @@ use Rikudou\MemoizeBundle\Attribute\Memoizable;
 use Rikudou\MemoizeBundle\Attribute\Memoize;
 use Rikudou\MemoizeBundle\Attribute\NoMemoize;
 use Rikudou\MemoizeBundle\Cache\InMemoryCachePool;
+use Rikudou\MemoizeBundle\Cache\KeySpecifier\CacheKeySpecifier;
 use RuntimeException;
 use Symfony\Component\DependencyInjection\Compiler\CompilerPassInterface;
 use Symfony\Component\DependencyInjection\ContainerBuilder;
@@ -43,6 +44,8 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
 
         $cacheServiceName = $container->getParameter('rikudou.memoize.cache_service');
         assert(is_string($cacheServiceName));
+        $keySpecifierServiceName = $container->getParameter('rikudou.memoize.key_specifier_service');
+        assert(is_string($keySpecifierServiceName));
         $services = array_keys($container->findTaggedServiceIds('rikudou.memoize.memoizable_service'));
 
         foreach ($services as $service) {
@@ -72,6 +75,7 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
                 new Reference('.inner'),
                 new Reference($cacheServiceName),
                 new Reference('rikudou.memoize.internal_cache'),
+                new Reference($keySpecifierServiceName),
             ]);
             $newDefinition->setDecoratedService($service);
             $container->setDefinition($proxyClass, $newDefinition);
@@ -143,11 +147,13 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
         $originalClass = $serviceDefinition->getClass();
         $cacheClass = CacheItemPoolInterface::class;
         $internalCacheClass = InMemoryCachePool::class;
+        $cacheKeySpecifierClass = CacheKeySpecifier::class;
 
         $constructor = "\tpublic function __construct(\n";
         $constructor .= "\t\tprivate readonly \\{$originalClass} \$original,\n";
         $constructor .= "\t\tprivate readonly \\{$cacheClass} \$cache,\n";
         $constructor .= "\t\tprivate readonly \\{$internalCacheClass} \$internalCache,\n";
+        $constructor .= "\t\tprivate readonly \\{$cacheKeySpecifierClass} \$cacheKeySpecifier,\n";
         $constructor .= "\t) {}";
 
         return $constructor;
@@ -189,6 +195,7 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
             }
             $methodContent .= "\t\t\$cacheKey .= serialize({$parameter});\n";
         }
+        $methodContent .= "\t\t\$cacheKey .= \$this->cacheKeySpecifier->generate();\n";
         $methodContent .= "\t\t\$cacheKey = hash('sha512', \$cacheKey);\n";
         $methodContent .= "\t\t\$cacheKey = \"rikudou_memoize_{$serviceName}_{$method->getName()}_{\$cacheKey}\";\n\n";
         if ($expiresAfter < 0) {
