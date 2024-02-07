@@ -169,6 +169,7 @@ There are these configurations:
 - `enabled`
 - `default_memoize_seconds`
 - `cache_service`
+- `key_specifier_service`
 
 ### enabled
 
