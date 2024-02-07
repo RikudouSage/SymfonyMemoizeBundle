@@ -211,6 +211,9 @@ rikudou_memoize:
 
   # The default cache service to use. If default_memoize_seconds is set to -1 this setting is ignored and internal service is used.
   cache_service:        cache.app
+
+  # The service to use to alter the cache key. Useful if you need to alter the cache key based on some global state.
+  key_specifier_service: rikudou.memoize.key_specifier.null
 ```
 
 ## Example proxy class
@@ -264,18 +267,20 @@ class Calculator implements CalculatorInterface
 
 namespace App\Memoized;
 
-final class Calculator_Proxy_97bcf9ddeba8fffab6ecd550cf2ea6d6 implements \App\Service\CalculatorInterface
+final class Calculator_Proxy_422705a42881a5490e7996fe93245734 implements \App\Service\CalculatorInterface
 {
 	public function __construct(
 		private readonly \App\Service\Calculator $original,
 		private readonly \Psr\Cache\CacheItemPoolInterface $cache,
 		private readonly \Rikudou\MemoizeBundle\Cache\InMemoryCachePool $internalCache,
+		private readonly \Rikudou\MemoizeBundle\Cache\KeySpecifier\CacheKeySpecifier $cacheKeySpecifier,
 	) {}
 
 	public function add(int $a, int $b): int {
 		$cacheKey = '';
 		$cacheKey .= serialize($a);
 		$cacheKey .= serialize($b);
+		$cacheKey .= $this->cacheKeySpecifier->generate();
 		$cacheKey = hash('sha512', $cacheKey);
 		$cacheKey = "rikudou_memoize_AppServiceCalculator_add_{$cacheKey}";
 
@@ -294,6 +299,7 @@ final class Calculator_Proxy_97bcf9ddeba8fffab6ecd550cf2ea6d6 implements \App\Se
 		$cacheKey = '';
 		$cacheKey .= serialize($a);
 		$cacheKey .= serialize($b);
+		$cacheKey .= $this->cacheKeySpecifier->generate();
 		$cacheKey = hash('sha512', $cacheKey);
 		$cacheKey = "rikudou_memoize_AppServiceCalculator_sub_{$cacheKey}";
 
@@ -314,6 +320,7 @@ final class Calculator_Proxy_97bcf9ddeba8fffab6ecd550cf2ea6d6 implements \App\Se
 
 	public function someVoidMethod(): void {
 		$cacheKey = '';
+		$cacheKey .= $this->cacheKeySpecifier->generate();
 		$cacheKey = hash('sha512', $cacheKey);
 		$cacheKey = "rikudou_memoize_AppServiceCalculator_someVoidMethod_{$cacheKey}";
 
