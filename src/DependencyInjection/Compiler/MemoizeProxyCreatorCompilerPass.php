@@ -325,6 +325,9 @@ final class MemoizeProxyCreatorCompilerPass implements CompilerPassInterface
             if ($parameter->isVariadic()) {
                 $definition .= "...\${$parameter->getName()}";
             } else {
+                if ($parameter->isPassedByReference()) {
+                    $definition .= '&';
+                }
                 $definition .= "\${$parameter->getName()}";
                 if ($parameter->isDefaultValueAvailable()) {
                     $definition .= " = {$this->getDefaultValue($parameter)}";
